@@ -128,3 +128,9 @@ Pēc komponentu savienošanas jāpārbauda viens pilns scenārijs:
 8. Tiek pārbaudīts, vai aprēķins ievēro minimālos tirāžus un iekārtu darbības laika ierobežojumus.
 
 Ja šis scenārijs darbojas korekti, sistēmas galvenā funkcionalitāte ir integrēta.
+
+### 9. Sistēmas Struktūras modelis
+
+Labākai plāna uztverei tika izveidots struktūras modelis, kurš vizuāli atspoguļo visas komponentes un to sastāvdaļas.
+
+![Sistēmas struktūras modelis](SistemasStrukturasModelis.svg)
