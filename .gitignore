@@ -1,0 +1,13 @@
+# Local configuration and secrets
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Editors and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
