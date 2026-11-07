@@ -1,0 +1,37 @@
+services:
+  web:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://projlab:local-dev-only@db:5432/projlab
+    ports:
+      - "127.0.0.1:${PROJLAB_PORT:-5002}:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:5000/health', timeout=3).close()"
+      interval: 3s
+      timeout: 4s
+      retries: 15
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: projlab
+      POSTGRES_USER: projlab
+      POSTGRES_PASSWORD: local-dev-only
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "projlab", "-d", "projlab"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+volumes:
+  pgdata:
