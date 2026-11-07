@@ -2,4 +2,40 @@
 
 {% block body %}
 <h1>About</h1>
+<section lang="lv" aria-labelledby="order-data-heading">
+    <h2 class="h4" id="order-data-heading">Pasūtījumu un drukāšanas dati</h2>
+    {% if database_unavailable %}
+    <p class="alert alert-warning" role="alert">
+        Dati pašlaik nav pieejami. Mēģiniet vēlreiz vēlāk.
+    </p>
+    {% elif rows %}
+    <p class="text-muted">Katram pasūtījumam ir viena rinda par katru iekārtu, kurai norādīts drukāšanas laiks.</p>
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle" aria-labelledby="order-data-heading">
+            <thead>
+                <tr>
+                    <th scope="col">Pasūtījuma ID</th>
+                    <th scope="col">Grāmata</th>
+                    <th scope="col">Peļņa (€/gab.)</th>
+                    <th scope="col">Min. tirāža (gab.)</th>
+                    <th scope="col">Iekārta</th>
+                    <th scope="col">Pieejamais laiks (min.)</th>
+                    <th scope="col">Drukāšanas laiks (min./gab.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    {% for value in row %}
+                    <td>{% if value is none %}—{% elif value is number %}{{ value|string|replace('.', ',') }}{% else %}{{ value }}{% endif %}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted">Ierakstu vēl nav.</p>
+    {% endif %}
+</section>
 {% endblock %}
