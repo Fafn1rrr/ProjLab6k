@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Apstrādes laiki{% endblock %}
+{% block content %}
+<h1 class="h3 mb-2">4. Apstrādes laiki</h1>
+<p class="text-secondary">Cik minūšu katra iekārta patērē <strong>vienas</strong> grāmatas apstrādei.
+  Ja iekārta grāmatai nav vajadzīga, ierakstiet 0.</p>
+
+{% if books and machines %}
+<form method="post">
+  <table class="table table-bordered align-middle">
+    <thead class="table-light">
+      <tr><th>Grāmata \ Iekārta</th>{% for m in machines %}<th class="text-center">{{ m.name }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+    {% for b in books %}
+      <tr>
+        <th>{{ b.title }}</th>
+        {% for m in machines %}
+          {% set key = 't_%d_%d'|format(b.id, m.id) %}
+          <td><input class="form-control form-control-sm text-end" name="{{ key }}" inputmode="decimal"
+                     value="{{ values.get(key, '') }}" aria-label="{{ b.title }} – {{ m.name }}"></td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <button class="btn btn-primary">Saglabāt laikus</button>
+</form>
+{% else %}
+<div class="alert alert-info">Vispirms pievienojiet vismaz vienu grāmatu un vienu iekārtu.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Pasūtījumi{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">2. Pasūtījumi</h1>
+
+<form method="post" class="row g-2 align-items-end mb-4">
+  <div class="col-md-4">
+    <label class="form-label" for="book">Grāmata</label>
+    <select class="form-select" id="book" name="book_id" required>
+      <option value="">— izvēlieties —</option>
+      {% for b in books %}<option value="{{ b.id }}">{{ b.title }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label" for="min_qty">Minimums, gab.</label>
+    <input class="form-control" id="min_qty" name="min_quantity" type="number" min="1" step="1" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label" for="max_qty">Maksimums, gab. <span class="small text-secondary">(neobligāts)</span></label>
+    <input class="form-control" id="max_qty" name="max_quantity" type="number" min="1" step="1" placeholder="bez ierobežojuma">
+  </div>
+  <div class="col-md-3"><button class="btn btn-primary w-100">Pievienot pasūtījumu</button></div>
+</form>
+
+<table class="table table-striped">
+  <thead><tr><th>Nr.</th><th>Grāmata</th><th class="text-end">Minimums</th><th class="text-end">Maksimums</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.book.title }}</td>
+      <td class="text-end">{{ o.min_quantity }}</td>
+      <td class="text-end">{{ o.max_quantity or '—' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" class="text-secondary">Vēl nav neviena pasūtījuma.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Aprēķināt plānu{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">5. Optimālā drukāšanas plāna aprēķins</h1>
+<p class="text-secondary">Sistēma nosaka, cik grāmatu katram pasūtījumam drukāt, lai kopējā peļņa būtu maksimāla,
+  netiktu pārsniegts neviena iekārtas pieejamais laiks un tiktu ievēroti minimālie un maksimālie daudzumi.</p>
+<button id="optimize-btn" class="btn btn-lg btn-success">Aprēķināt plānu</button>
+<div id="result" class="mt-4"></div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/plan.js') }}"></script>
+{% endblock %}

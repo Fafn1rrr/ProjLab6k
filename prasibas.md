@@ -16,6 +16,9 @@
 | F10 | Sistēmai jāattēlo izmantotais un atlikušais iekārtu darbības laiks. | Should have |
 | F11 | Sistēmai jānodrošina iepriekš ievadīto grāmatu un iekārtu datu rediģēšana. | Should have |
 | F12 | Sistēmai jānodrošina iepriekš aprēķināto drukāšanas plānu saglabāšana un apskate. | Could have |
+| F13 | Sistēmai jānodrošina iespēja katram pasūtījumam norādīt maksimālo drukājamo daudzumu (neobligāti), lai plāns neparedzētu vairāk eksemplāru, nekā var pārdot. | Should have |
+
+**Mērvienības:** visi iekārtu darbības laiki (pieejamais laiks un laiks uz vienu grāmatu) tiek norādīti **minūtēs**; peļņa — **eiro (€)**; daudzumi — **eksemplāros** (veseli skaitļi).
 
 ## 2. Lietotāju stāsti
 
@@ -39,3 +42,4 @@ Lietotāju stāsti tiek formulēti pēc principa:
 | US10 | Ražošanas plānotājs vēlas redzēt izmantoto un atlikušo iekārtu darbības laiku, jo nepieciešams novērtēt iekārtu noslodzi. | Should have |
 | US11 | Ražošanas plānotājs vēlas rediģēt iepriekš ievadītos grāmatu un iekārtu datus, jo sākotnējā informācija var mainīties. | Should have |
 | US12 | Ražošanas plānotājs vēlas saglabāt un apskatīt iepriekš aprēķinātos drukāšanas plānus, jo tos var būt nepieciešams izmantot vēlāk. | Could have |
+| US13 | Ražošanas plānotājs vēlas norādīt pasūtījuma maksimālo daudzumu, jo nav jēgas drukāt vairāk grāmatu, nekā klients pasūtījis vai tirgus var pieņemt. | Should have |

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Drukāšanas plāns{% endblock %}
+{% block content %}
+<h1 class="h3 mb-1">Drukāšanas plāns Nr. {{ plan.id }}</h1>
+<p class="text-secondary">Aprēķināts {{ plan.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+
+<div class="alert alert-success fs-4">Kopējā peļņa: <strong>{{ plan.total_profit }} €</strong></div>
+
+<h2 class="h5">Kas un cik jādrukā</h2>
+<table class="table table-striped">
+  <thead><tr><th>Pasūtījums</th><th>Grāmata</th><th class="text-end">Minimums</th><th class="text-end">Maksimums</th>
+    <th class="text-end">Drukāt</th><th class="text-end">Peļņa, €</th></tr></thead>
+  <tbody>
+  {% for line in plan.lines %}
+    <tr>
+      <td>Nr. {{ line.order.id }}</td>
+      <td>{{ line.order.book.title }}</td>
+      <td class="text-end">{{ line.order.min_quantity }}</td>
+      <td class="text-end">{{ line.order.max_quantity or '—' }}</td>
+      <td class="text-end fw-bold">{{ line.quantity }}</td>
+      <td class="text-end">{{ line.quantity * line.order.book.profit_per_unit }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2 class="h5 mt-4">Iekārtu noslodze, min</h2>
+<table class="table">
+  <thead><tr><th>Iekārta</th><th class="text-end">Izmantots</th><th class="text-end">Atlicis</th><th class="text-end">Pieejams</th></tr></thead>
+  <tbody>
+  {% for load in plan.loads %}
+    <tr class="{{ 'table-danger' if load.remaining_time <= 0 }}">
+      <td>{{ load.machine.name }}</td>
+      <td class="text-end">{{ load.used_time }}</td>
+      <td class="text-end">{{ load.remaining_time }}</td>
+      <td class="text-end">{{ load.machine.available_time }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="small text-secondary">Sarkanā rinda — iekārta noslogota pilnībā; tieši tā ierobežo peļņas tālāku pieaugumu.</p>
+<a class="btn btn-outline-primary" href="{{ url_for('pages.plan') }}">Atpakaļ</a>
+{% endblock %}

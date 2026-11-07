@@ -6,7 +6,7 @@
 |---|---|---|
 | Satvars | Flask | Flask tika apskatīts lekcijā, un mums jau ir pieredze darbā ar šo ietvaru. Tas ir vienkāršs un piemērots mūsu risinājuma izstrādei. |
 | Programmēšanas valoda | Python | Python jau ir pazīstama programmēšanas valoda un ir ērti izmantojama gan tīmekļa lietotnes loģikai, gan optimizācijas uzdevumu risināšanai. |
-| Optimizācijas risinājums | PuLP + CBC Solver | Tiks izmantots lineārās optimizācijas modeļa izveidei un optimāla drukāšanas plāna aprēķināšanai, maksimizējot peļņu un ievērojot iekārtu darbības laika ierobežojumus. |
+| Optimizācijas risinājums | PuLP + CBC Solver | Tiek izmantots veselo skaitļu lineārās programmēšanas (ILP) modeļa izveidei un optimāla drukāšanas plāna aprēķināšanai, maksimizējot peļņu un ievērojot iekārtu darbības laika ierobežojumus. Veseli skaitļi ir nepieciešami, jo grāmatas drukā veselos eksemplāros. CBC izmanto zaru un robežu metodi (branch and bound) un atrod pierādāmi optimālu risinājumu. |
 | Datu bāze | PostgreSQL | Relāciju datu bāze, kas ir piemērota grāmatu, pasūtījumu, iekārtu un drukāšanas plānu datu glabāšanai. |
 | Tīmekļa serveris | Gunicorn | Gunicorn ir vienkāršs veids, kā darbināt Flask lietotni servera vidē, un tas labi darbojas kopā ar Python un Linux. |
 | OS | Ubuntu | Bezmaksas un plaši izmantota Linux operētājsistēma. |

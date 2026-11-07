@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Iekārtas{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">3. Iekārtas</h1>
+
+<form method="post" class="row g-2 align-items-end mb-4">
+  <div class="col-md-6">
+    <label class="form-label" for="name">Nosaukums</label>
+    <input class="form-control" id="name" name="name" maxlength="100" required placeholder="piem. Druka">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label" for="avail">Pieejamais laiks, min</label>
+    <input class="form-control" id="avail" name="available_time" inputmode="decimal" required>
+  </div>
+  <div class="col-md-3"><button class="btn btn-primary w-100">Pievienot iekārtu</button></div>
+</form>
+
+<table class="table table-striped">
+  <thead><tr><th>Nosaukums</th><th class="text-end">Pieejamais laiks, min</th></tr></thead>
+  <tbody>
+  {% for m in machines %}
+    <tr><td>{{ m.name }}</td><td class="text-end">{{ m.available_time }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="text-secondary">Vēl nav nevienas iekārtas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

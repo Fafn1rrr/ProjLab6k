@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Grāmatas{% endblock %}
+{% block content %}
+<h1 class="h3 mb-3">1. Grāmatas</h1>
+
+<form method="post" class="row g-2 align-items-end mb-4">
+  <div class="col-md-6">
+    <label class="form-label" for="title">Nosaukums</label>
+    <input class="form-control" id="title" name="title" maxlength="200" required>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label" for="profit">Peļņa par vienību, €</label>
+    <input class="form-control" id="profit" name="profit_per_unit" inputmode="decimal" required placeholder="piem. 4,50">
+  </div>
+  <div class="col-md-3"><button class="btn btn-primary w-100">Pievienot grāmatu</button></div>
+</form>
+
+<table class="table table-striped">
+  <thead><tr><th>Nosaukums</th><th class="text-end">Peļņa par vienību, €</th></tr></thead>
+  <tbody>
+  {% for b in books %}
+    <tr><td>{{ b.title }}</td><td class="text-end">{{ b.profit_per_unit }}</td></tr>
+  {% else %}
+    <tr><td colspan="2" class="text-secondary">Vēl nav nevienas grāmatas.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

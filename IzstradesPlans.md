@@ -53,7 +53,7 @@ Balstoties uz konceptuālo modeli, jānodrošina šādu datu glabāšana:
 | Dati | Saturs |
 |---|---|
 | Grāmatas | Identifikators, nosaukums, peļņa par vienību |
-| Pasūtījumi | Identifikators, grāmatas identifikators, minimālais tirāžas daudzums |
+| Pasūtījumi | Identifikators, grāmatas identifikators, minimālais tirāžas daudzums, maksimālais daudzums (neobligāts, F13) |
 | Iekārtas | Identifikators, nosaukums, pieejamais darbības laiks |
 | Apstrādes laiki | Grāmatas un iekārtas identifikatori, laiks vienas grāmatas apstrādei |
 | Drukāšanas plāni | Aprēķinātā peļņa un plāna dati, ja tiek realizēta saglabāšana |
@@ -76,29 +76,28 @@ Optimizācijas modulis saņem sagatavotus datus no backend un neatkarīgi nepiek
 
 ### 6. Frontend un backend mijiedarbība
 
-Tālāk norādīti **piedāvātie API maršruti**, kurus komanda var saskaņot pirms realizācijas.
+Sākotnēji tika plānots, ka visas darbības notiek caur JSON API. Starpversijā izvēlēta
+**vienkāršāka pieeja**: datu ievades formas apstrādā serveris (Flask + Jinja veidnes,
+standarta HTML formas), bet JSON tiek izmantots tikai plāna aprēķinam, ko izsauc JavaScript.
+Tā koda ir daudz mazāk, un tehnoloģiju steks paliek tas pats.
 
-| Frontend darbība | API pieprasījums | Backend darbība |
+| Frontend darbība | Plānotais API | Realizācija starpversijā |
 |---|---|---|
-| Atvērt grāmatu sarakstu | `GET /api/books` | Atgriež grāmatas no DB |
-| Pievienot grāmatu | `POST /api/books` | Validē un saglabā grāmatu |
-| Atvērt pasūtījumus | `GET /api/orders` | Atgriež pasūtījumus |
-| Pievienot pasūtījumu | `POST /api/orders` | Saglabā pasūtījumu |
-| Atvērt iekārtas | `GET /api/machines` | Atgriež iekārtas |
-| Pievienot iekārtu | `POST /api/machines` | Saglabā iekārtu |
-| Iegūt apstrādes laikus | `GET /api/processing-times` | Atgriež apstrādes laikus |
-| Saglabāt apstrādes laiku | `PUT /api/processing-times` | Saglabā vai atjaunina vērtību |
-| Aprēķināt plānu | `POST /api/optimize` | Sagatavo ievaddatus un izsauc optimizāciju |
-| Rediģēt grāmatu | `PUT /api/books/{id}` | Atjaunina grāmatu |
-| Rediģēt iekārtu | `PUT /api/machines/{id}` | Atjaunina iekārtu |
+| Atvērt / pievienot grāmatas | `GET`, `POST /api/books` | lapa `GET /books`, forma `POST /books` |
+| Atvērt / pievienot pasūtījumus | `GET`, `POST /api/orders` | lapa `GET /orders`, forma `POST /orders` |
+| Atvērt / pievienot iekārtas | `GET`, `POST /api/machines` | lapa `GET /machines`, forma `POST /machines` |
+| Apstrādes laiki | `GET`, `PUT /api/processing-times` | tabula `GET /processing-times`, forma `POST /processing-times` (visa tabula vienā reizē) |
+| Aprēķināt plānu | `POST /api/optimize` | `POST /api/optimize` (JSON, izsauc JavaScript) — kā plānots |
+| Apskatīt plānu | — | lapa `GET /plans/{id}` (atveras pēc aprēķina) |
+| Rediģēt grāmatu / iekārtu | `PUT /api/books/{id}`, `PUT /api/machines/{id}` | nākamajā versijā (F11) |
 
-Plānu saglabāšanas API tiek pievienots, realizējot F12.
+HTML formas izmanto `POST`, jo pārlūka formas neatbalsta `PUT`.
 
 **API vienošanās:**
 - Pieprasījumu un atbilžu dati tiek pārsūtīti JSON formātā.
 - Ieraksti tiek identificēti ar unikāliem ID.
-- Backend atgriež atbilstošus HTTP statusa kodus.
-- Kļūdu gadījumā atbilde satur kļūdas kodu un aprakstu.
+- Backend atgriež atbilstošus HTTP statusa kodus (201 — plāns izveidots, 422 — plānu nevar aprēķināt).
+- Kļūdu gadījumā atbilde satur kļūdas aprakstu laukā `error`.
 - Frontend izmanto backend atgrieztos datus un neaprēķina optimizācijas rezultātus patstāvīgi.
 
 ### 7. Izstrādes secība un atkarības

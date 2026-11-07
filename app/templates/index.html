@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h3 mb-3">Drukāšanas pasūtījumu izpildes plānošana</h1>
+<p>Sistēma aprēķina, cik grāmatu katram pasūtījumam izdrukāt, lai kopējā peļņa būtu maksimāla,
+  ievērojot minimālos daudzumus un iekārtu pieejamo darbības laiku.</p>
+<p>Ejiet pa izvēlnes soļiem no 1 līdz 5. Visi laiki norādīti minūtēs.</p>
+<a class="btn btn-primary" href="{{ url_for('pages.books') }}">Sākt ar 1. soli</a>
+{% endblock %}

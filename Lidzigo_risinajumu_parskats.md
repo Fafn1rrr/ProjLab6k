@@ -71,7 +71,24 @@ Salīdzinājums rāda, ka mūsu projekta problēma atbilst reālai drukas indust
 
 ## 4. Intelektuālais algoritms
 
-### Ģenētiskais algoritms
+### Izvēlētais algoritms: veselo skaitļu lineārā programmēšana (ILP)
+
+Mūsu uzdevums — noteikt, cik eksemplāru katram pasūtījumam drukāt, lai maksimizētu peļņu,
+ievērojot minimālos (un, ja norādīti, maksimālos) daudzumus un iekārtu pieejamo laiku.
+Gan mērķa funkcija (peļņa), gan visi ierobežojumi (iekārtu laiks) ir **lineāri** attiecībā pret
+drukājamajiem daudzumiem, un daudzumi ir **veseli skaitļi**. Tāpēc uzdevums precīzi atbilst
+veselo skaitļu lineārās programmēšanas (Integer Linear Programming, ILP) modelim:
+
+- **mainīgie:** `x_o` — drukājamais daudzums pasūtījumam `o`;
+- **mērķis:** `max Σ peļņa_o · x_o`;
+- **ierobežojumi:** `min_o ≤ x_o ≤ max_o`; `Σ laiks(o, m) · x_o ≤ pieejamais_laiks_m` katrai iekārtai `m`.
+
+Modeli risina **CBC** risinātājs (izmantojot bibliotēku PuLP) ar zaru un robežu metodi
+(branch and bound). Atšķirībā no heiristikām tas atrod **pierādāmi optimālu** risinājumu
+vai pierāda, ka risinājuma nav (piemēram, minimālie daudzumi neietilpst iekārtu laikā).
+Mūsu uzdevuma izmēram (desmiti pasūtījumu, dažas iekārtas) aprēķins aizņem sekundes daļu.
+
+### Apskatītā alternatīva: ģenētiskais algoritms
 
 Viens no algoritmiem, ko var izmantot ražošanas plānošanas problēmām, ir **ģenētiskais algoritms (Genetic Algorithm)**.
 
@@ -87,4 +104,10 @@ Mūsu projektā piemērotības funkcijā teorētiski varētu ņemt vērā:
 - neizpildīto vai nokavēto pasūtījumu skaitu;
 - plānoto peļņu.
 
-Šobrīd ģenētiskais algoritms tiek aplūkots kā iespējamais intelektuālais algoritms turpmākai izpētei; tā izvēle galīgajai sistēmas implementācijai vēl ir jāizvērtē.
+**Kāpēc izvēlēts ILP, nevis ģenētiskais algoritms.** Ģenētiskais algoritms ir heiristika: tas
+atrod labu, bet ne garantēti labāko risinājumu, un rezultāts atkarīgs no nejaušības un
+parametriem (populācijas lielums, mutācijas varbūtība). Tas ir piemērots tad, kad uzdevumu nevar
+aprakstīt lineāri — piemēram, ja jāplāno darbu **secība** uz iekārtām, pārkārtošanās laiki vai
+termiņi. Mūsu pašreizējā uzdevumā secība netiek plānota, tāpēc ILP dod precīzu atbildi ātrāk un
+vienkāršāk. Ģenētiskais algoritms paliek kā iespējams paplašinājums, ja sistēmai tiks pievienota
+darbu secības plānošana.

@@ -1,0 +1,7 @@
+Flask>=3.0,<4
+Flask-SQLAlchemy>=3.1,<4
+psycopg[binary]>=3.2,<4
+python-dotenv>=1.0
+PuLP>=2.8,<4
+# Gunicorn tiek izmantots tikai serverī (Linux); Windows to nedarbina.
+gunicorn>=22; sys_platform != "win32"

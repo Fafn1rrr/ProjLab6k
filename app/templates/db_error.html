@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Datu bāzes kļūda{% endblock %}
+{% block content %}
+<div class="alert alert-danger">
+  <h1 class="h4">Nav pieejama datu bāze</h1>
+  <p>Lietotne nevar pieslēgties PostgreSQL vai nav izveidotas tabulas. Izpildiet terminālī:</p>
+  <pre class="mb-2">flask --app app init-db
+flask --app app seed</pre>
+  <p class="mb-0">Pārbaudiet arī, vai PostgreSQL serveris darbojas un vai <code>DATABASE_URL</code> failā <code>.env</code> ir pareizs.</p>
+</div>
+<details><summary class="small text-secondary">Tehniskā informācija</summary><pre class="small">{{ error }}</pre></details>
+{% endblock %}
