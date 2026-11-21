@@ -55,8 +55,8 @@ All API errors use the following format:
 | `PUT /api/machines/{id}` | Implemented |
 | `GET /api/orders` | Implemented |
 | `POST /api/orders` | Implemented |
-| `GET /api/processing-times` | Placeholder |
-| `PUT /api/processing-times` | To implement |
+| `GET /api/processing-times` | Implemented |
+| `PUT /api/processing-times` | Implemented |
 | `POST /api/optimize` | To implement |
 
 ---
@@ -519,7 +519,7 @@ If no processing times exist:
 []
 ```
 
-> Current implementation returns an empty array as a temporary placeholder.
+Results are ordered by `bookId`, then `machineId`.
 
 ---
 
@@ -544,10 +544,14 @@ The endpoint uses upsert behaviour:
 
 ### Validation
 
+- `bookId` must be an integer;
 - `bookId` must reference an existing book;
+- `machineId` must be an integer;
 - `machineId` must reference an existing machine;
-- `time` must be a number;
+- `time` must be a finite JSON number (strings, booleans, `NaN` and `Infinity` are rejected);
 - `time` cannot be negative.
+
+The stored value is rounded to 4 decimal places; the response returns the stored value.
 
 ### Response — `200 OK`
 
@@ -568,6 +572,14 @@ The endpoint uses upsert behaviour:
   "message": "Processing time must be 0 or greater."
 }
 ```
+
+Other `400 Bad Request` messages:
+
+- `"Invalid JSON data."`
+- `"Book ID must be an integer."`
+- `"Machine ID must be an integer."`
+- `"Processing time must be a number."`
+- `"Processing time is too large."`
 
 `404 Not Found`
 
@@ -749,14 +761,6 @@ Examples:
 # Current missing backend functionality
 
 The following functionality is already expected by the frontend but is not yet implemented in the backend:
-
-## Processing Times
-
-```text
-PUT /api/processing-times
-```
-
-`GET /api/processing-times` currently exists but returns only an empty array.
 
 ## Optimization
 

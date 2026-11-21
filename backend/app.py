@@ -1,3 +1,6 @@
+import math
+
+import psycopg
 from flask import Flask, jsonify, request, send_from_directory
 
 from db import DatabaseConfigurationError, get_connection
@@ -340,9 +343,104 @@ def update_machine(machine_id):
         "availableTime": available_time
     })
 
+def is_integer_id(value):
+    # bool is a subclass of int in Python, so True/False must be rejected explicitly.
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 @app.get("/api/processing-times")
 def get_processing_times():
-    return jsonify([])
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT book_id, machine_id, processing_time
+                FROM processing_times
+                ORDER BY book_id, machine_id
+            """)
+            rows = cur.fetchall()
+
+    processing_times = [
+        {
+            "bookId": row[0],
+            "machineId": row[1],
+            "time": float(row[2])
+        }
+        for row in rows
+    ]
+
+    return jsonify(processing_times)
+
+
+@app.put("/api/processing-times")
+def upsert_processing_time():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"message": "Invalid JSON data."}), 400
+
+    book_id = data.get("bookId")
+    machine_id = data.get("machineId")
+    time = data.get("time")
+
+    if not is_integer_id(book_id):
+        return jsonify({"message": "Book ID must be an integer."}), 400
+
+    if not is_integer_id(machine_id):
+        return jsonify({"message": "Machine ID must be an integer."}), 400
+
+    if not isinstance(time, (int, float)) or isinstance(time, bool):
+        return jsonify({"message": "Processing time must be a number."}), 400
+
+    try:
+        time = float(time)
+    except OverflowError:
+        return jsonify({"message": "Processing time is too large."}), 400
+
+    # Python's JSON parser accepts NaN/Infinity; PostgreSQL NUMERIC would store NaN.
+    if not math.isfinite(time):
+        return jsonify({"message": "Processing time must be a number."}), 400
+
+    if time < 0:
+        return jsonify({
+            "message": "Processing time must be 0 or greater."
+        }), 400
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM books WHERE id = %s", (book_id,))
+            if cur.fetchone() is None:
+                return jsonify({"message": "Book not found."}), 404
+
+            cur.execute("SELECT 1 FROM machines WHERE id = %s", (machine_id,))
+            if cur.fetchone() is None:
+                return jsonify({"message": "Machine not found."}), 404
+
+            try:
+                cur.execute(
+                    """
+                    INSERT INTO processing_times
+                        (book_id, machine_id, processing_time)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (book_id, machine_id)
+                    DO UPDATE SET processing_time = EXCLUDED.processing_time
+                    RETURNING processing_time
+                    """,
+                    (book_id, machine_id, time)
+                )
+            except psycopg.errors.NumericValueOutOfRange:
+                conn.rollback()
+                return jsonify({
+                    "message": "Processing time is too large."
+                }), 400
+
+            # Return the value as stored (the column rounds to 4 decimals).
+            stored_time = cur.fetchone()[0]
+
+    return jsonify({
+        "bookId": book_id,
+        "machineId": machine_id,
+        "time": float(stored_time)
+    })
 
 
 @app.errorhandler(DatabaseConfigurationError)
