@@ -148,7 +148,79 @@ def update_book(book_id):
 
 @app.get("/api/orders")
 def get_orders():
-    return jsonify([])
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT id, book_id, min_quantity
+                FROM orders
+                ORDER BY id
+            """)
+            rows = cur.fetchall()
+
+    orders = [
+        {
+            "id": row[0],
+            "bookId": row[1],
+            "minQuantity": row[2]
+        }
+        for row in rows
+    ]
+
+    return jsonify(orders)
+
+
+# Upper bound of the PostgreSQL INTEGER column orders.min_quantity.
+MAX_MIN_QUANTITY = 2147483647
+
+
+@app.post("/api/orders")
+def add_order():
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({"message": "Invalid JSON data."}), 400
+
+    book_id = data.get("bookId")
+    min_quantity = data.get("minQuantity")
+
+    # bool is a subclass of int in Python, so True/False must be rejected explicitly.
+    if not isinstance(book_id, int) or isinstance(book_id, bool):
+        return jsonify({"message": "Book ID must be an integer."}), 400
+
+    if not isinstance(min_quantity, int) or isinstance(min_quantity, bool):
+        return jsonify({
+            "message": "Minimum quantity must be an integer."
+        }), 400
+
+    if min_quantity <= 0:
+        return jsonify({
+            "message": "Minimum quantity must be greater than 0."
+        }), 400
+
+    if min_quantity > MAX_MIN_QUANTITY:
+        return jsonify({"message": "Minimum quantity is too large."}), 400
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1 FROM books WHERE id = %s", (book_id,))
+            if cur.fetchone() is None:
+                return jsonify({"message": "Book not found."}), 404
+
+            cur.execute(
+                """
+                INSERT INTO orders (book_id, min_quantity)
+                VALUES (%s, %s)
+                RETURNING id
+                """,
+                (book_id, min_quantity)
+            )
+            order_id = cur.fetchone()[0]
+
+    return jsonify({
+        "id": order_id,
+        "bookId": book_id,
+        "minQuantity": min_quantity
+    }), 201
 
 
 @app.get("/api/machines")

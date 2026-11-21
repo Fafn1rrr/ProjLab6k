@@ -53,8 +53,8 @@ All API errors use the following format:
 | `GET /api/machines` | Implemented |
 | `POST /api/machines` | Implemented |
 | `PUT /api/machines/{id}` | Implemented |
-| `GET /api/orders` | Placeholder |
-| `POST /api/orders` | To implement |
+| `GET /api/orders` | Implemented |
+| `POST /api/orders` | Implemented |
 | `GET /api/processing-times` | Implemented |
 | `PUT /api/processing-times` | Implemented |
 | `POST /api/optimize` | To implement |
@@ -406,7 +406,7 @@ If no orders exist:
 []
 ```
 
-> Current implementation returns an empty array as a temporary placeholder.
+Results are ordered by `id`.
 
 ---
 
@@ -425,10 +425,11 @@ Creates a new order.
 
 ### Validation
 
-- `bookId` must be an integer;
+- `bookId` must be an integer (strings, booleans and decimals are rejected);
 - referenced book must exist;
-- `minQuantity` must be an integer;
-- `minQuantity` must be greater than `0`.
+- `minQuantity` must be an integer (strings, booleans and decimals are rejected);
+- `minQuantity` must be greater than `0`;
+- `minQuantity` cannot exceed `2147483647` (PostgreSQL `INTEGER` limit).
 
 ### Response — `201 Created`
 
@@ -449,6 +450,13 @@ Creates a new order.
   "message": "Minimum quantity must be greater than 0."
 }
 ```
+
+Other `400 Bad Request` messages:
+
+- `"Invalid JSON data."`
+- `"Book ID must be an integer."`
+- `"Minimum quantity must be an integer."`
+- `"Minimum quantity is too large."`
 
 `404 Not Found`
 
@@ -753,14 +761,6 @@ Examples:
 # Current missing backend functionality
 
 The following functionality is already expected by the frontend but is not yet implemented in the backend:
-
-## Orders
-
-```text
-POST /api/orders
-```
-
-`GET /api/orders` currently exists but returns only an empty array.
 
 ## Optimization
 
