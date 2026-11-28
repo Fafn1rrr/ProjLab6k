@@ -120,16 +120,24 @@
           <input class="form-control" name="name" required minlength="2" maxlength="120" placeholder="Enter machine name">
           <small class="invalid-feedback">Enter a name (at least 2 characters).</small>
         </label>
-        <label>Available operating time (hours)
+        <label>Available operating time (minutes)
           <input class="form-control" name="availableTime" type="number" min="0.01" step="any" required placeholder="0">
-          <small class="invalid-feedback">Enter hours greater than 0.</small>
+          <small class="invalid-feedback">Enter minutes greater than 0.</small>
+        </label>
+        <label>Continuous printing time before maintenance (minutes)
+          <input class="form-control" name="continuousPrintingTime" type="number" min="0.01" step="any" required placeholder="0">
+          <small class="invalid-feedback">Enter minutes greater than 0.</small>
+        </label>
+        <label>Maintenance duration (minutes)
+          <input class="form-control" name="maintenanceTime" type="number" min="0" step="any" required placeholder="0">
+          <small class="invalid-feedback">Enter 0 or more minutes.</small>
         </label>
         <button class="btn btn-primary"><i class="bi bi-plus-lg"></i> <span data-label="Add Machine">Add Machine</span></button>
         <button class="btn btn-outline-secondary cancel" type="button" onclick="resetForm(this.form)" hidden>Cancel</button>
       </form>
 
       <table class="table">
-        <thead><tr><th>Machine name</th><th>Operating time (hours)</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Machine name</th><th>Operating time (minutes)</th><th>Print time before maintenance (minutes)</th><th>Maintenance duration (minutes)</th><th>Actions</th></tr></thead>
         <tbody id="machines-rows"></tbody>
       </table>
     </section>
@@ -139,7 +147,7 @@
       <header>
         <hgroup>
           <h2 class="title">Processing Times</h2>
-          <p class="note">Set the processing time (hours) required to print one unit of each book on each machine.</p>
+          <p class="note">Set the processing time (minutes) required to print one unit of each book on each machine.</p>
         </hgroup>
       </header>
 
