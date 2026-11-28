@@ -27,6 +27,8 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql
       - ./backend/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backend/database/machinesmaintain.sql:/docker-entrypoint-initdb.d/02-machinesmaintain.sql:ro
+      - ./backend/database/planhistory.sql:/docker-entrypoint-initdb.d/03-planhistory.sql:ro
     healthcheck:
       test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-U", "projlab", "-d", "projlab"]
       interval: 2s
