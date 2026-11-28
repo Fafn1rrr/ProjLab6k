@@ -1,3 +1,4 @@
 Flask
 psycopg[binary]
 gunicorn
+PuLP==3.3.0

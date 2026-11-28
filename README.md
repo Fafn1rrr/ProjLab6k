@@ -19,7 +19,7 @@ Pašlaik sistēmā ir realizētas šādas funkcijas:
 
 Pēc lapas pārlādēšanas ievadītie dati tiek atkārtoti ielādēti no PostgreSQL datubāzes.
 
-Pasūtījumu, apstrādes laiku un optimālā drukāšanas plāna aprēķina funkcionalitāte tiks realizēta nākamajos izstrādes posmos.
+Lietotnē var arī pievienot pasūtījumus, norādīt apstrādes laikus un pieprasīt optimālu drukāšanas plānu. Optimizācijas modelis un testu palaišana ir aprakstīti [modeļa dokumentācijā](docs/OptimizationModel.md).
 
 ## Izmantotās tehnoloģijas
 
@@ -30,6 +30,7 @@ Pasūtījumu, apstrādes laiku un optimālā drukāšanas plāna aprēķina funk
 - **PostgreSQL** — sistēmas datu glabāšanai;
 - **Psycopg** — Python savienojumam ar PostgreSQL datubāzi;
 - **Gunicorn** — Flask lietotnes darbināšanai servera vidē.
+- **PuLP un CBC** — optimālo tirāžu aprēķināšanai.
 
 ### Klienta puse
 
@@ -53,6 +54,7 @@ ProjLab6k/
 │   │   └── schema.sql
 │   ├── app.py
 │   ├── db.py
+│   ├── optimizer.py
 │   └── requirements.txt
 │
 ├── frontend/
@@ -173,14 +175,22 @@ Pēc tam projektu var atkārtoti palaist ar:
 docker compose up --build
 ```
 
-## Tehniskā risinājuma 1. versijas ierobežojumi
+## Optimizācijas priekšnosacījumi
+
+Ja PostgreSQL sējums ir izveidots pirms apkopes migrācijas, piemēro projektā iekļauto migrāciju pirms iekārtu API un optimizācijas izmantošanas.
+
+```bash
+docker compose exec -T db psql -U projlab -d projlab -v ON_ERROR_STOP=1 -f /docker-entrypoint-initdb.d/02-machinesmaintain.sql
+```
+
+Katrai iekārtai norāda pozitīvu `continuousPrintingTime` un apkopes ilgumu `maintenanceTime` iekārtu API. Piemēram, `PUT /api/machines/1` var nosūtīt `{"name":"Printer","availableTime":12,"continuousPrintingTime":4,"maintenanceTime":1}`. REST API laika vērtības norāda stundās. Katram pasūtītās grāmatas un iekārtas pārim jābūt apstrādes laikam, tostarp skaidri norādītai nullei, ja iekārta nav vajadzīga.
+
+## Tehniskā risinājuma ierobežojumi
 
 Šajā versijā vēl nav realizēta:
 
 - pasūtījumu pilna pārvaldība;
-- grāmatu apstrādes laika norādīšana katrai iekārtai;
-- optimālā drukāšanas plāna aprēķināšana;
-- PuLP/CBC optimizācijas modeļa integrācija ar lietotāja saskarni;
+- iekārtu apkopes parametru ievadīšana tīmekļa formā;
 - iepriekš aprēķināto drukāšanas plānu saglabāšana.
 
 Šī funkcionalitāte paredzēta nākamajiem projekta izstrādes posmiem.

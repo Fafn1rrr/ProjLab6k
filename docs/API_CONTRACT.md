@@ -24,6 +24,7 @@ Example:
 ```
 
 Database column names may use `snake_case` internally.
+Time values in this API are in hours. The database and optimizer use minutes.
 
 Example:
 
@@ -57,7 +58,7 @@ All API errors use the following format:
 | `POST /api/orders` | Implemented |
 | `GET /api/processing-times` | Implemented |
 | `PUT /api/processing-times` | Implemented |
-| `POST /api/optimize` | To implement |
+| `POST /api/optimize` | Implemented |
 
 ---
 
@@ -235,7 +236,9 @@ Machine object:
 {
   "id": 1,
   "name": "Printer 1",
-  "availableTime": 80
+  "availableTime": 80,
+  "continuousPrintingTime": 4,
+  "maintenanceTime": 1
 }
 ```
 
@@ -245,7 +248,9 @@ Fields:
 |---|---|---|
 | `id` | integer | Machine identifier |
 | `name` | string | Machine name |
-| `availableTime` | number | Available operating time |
+| `availableTime` | number | Total available time including maintenance |
+| `continuousPrintingTime` | number | Continuous printing limit before maintenance. A stored zero indicates an unconfigured limit. |
+| `maintenanceTime` | number | Duration of one maintenance break |
 
 ## GET `/api/machines`
 
@@ -258,7 +263,9 @@ Returns all machines.
   {
     "id": 1,
     "name": "Printer 1",
-    "availableTime": 80
+    "availableTime": 80,
+    "continuousPrintingTime": 4,
+    "maintenanceTime": 1
   }
 ]
 ```
@@ -280,7 +287,9 @@ Creates a new machine.
 ```json
 {
   "name": "Printer 1",
-  "availableTime": 80
+  "availableTime": 80,
+  "continuousPrintingTime": 4,
+  "maintenanceTime": 1
 }
 ```
 
@@ -290,6 +299,8 @@ Creates a new machine.
 - `name` must contain at least 2 characters;
 - `availableTime` must be a number;
 - `availableTime` must be greater than `0`.
+- `continuousPrintingTime` and `maintenanceTime` are optional. A supplied continuous printing limit must be greater than zero. A supplied maintenance duration must be zero or greater.
+- Omitting the settings when creating a machine stores zeros. The machine needs a positive continuous printing limit before optimization can use it.
 
 ### Response — `201 Created`
 
@@ -297,7 +308,9 @@ Creates a new machine.
 {
   "id": 1,
   "name": "Printer 1",
-  "availableTime": 80
+  "availableTime": 80,
+  "continuousPrintingTime": 4,
+  "maintenanceTime": 1
 }
 ```
 
@@ -334,9 +347,13 @@ Updates an existing machine.
 ```json
 {
   "name": "Updated Printer",
-  "availableTime": 100
+  "availableTime": 100,
+  "continuousPrintingTime": 4,
+  "maintenanceTime": 1
 }
 ```
+
+Omitted maintenance settings retain their stored values.
 
 ### Response — `200 OK`
 
@@ -344,7 +361,9 @@ Updates an existing machine.
 {
   "id": 1,
   "name": "Updated Printer",
-  "availableTime": 100
+  "availableTime": 100,
+  "continuousPrintingTime": 4,
+  "maintenanceTime": 1
 }
 ```
 
@@ -551,7 +570,7 @@ The endpoint uses upsert behaviour:
 - `time` must be a finite JSON number (strings, booleans, `NaN` and `Infinity` are rejected);
 - `time` cannot be negative.
 
-The stored value is rounded to 4 decimal places; the response returns the stored value.
+PostgreSQL rounds the converted value to four decimal places in minutes. The response converts the stored value back to hours.
 
 ### Response — `200 OK`
 
@@ -659,16 +678,28 @@ The backend loads required optimization data from PostgreSQL.
   ],
   "machines": [
     {
+      "machineId": 1,
       "machineName": "Printer 1",
-      "used": 72,
+      "used": 71,
       "available": 80,
-      "remaining": 8
+      "remaining": 9,
+      "printingTime": 64,
+      "maintenanceCount": 7,
+      "maintenanceTime": 7,
+      "effectivePrintingTime": 72,
+      "utilizationPercent": 88.75
     },
     {
+      "machineId": 2,
       "machineName": "Printer 2",
       "used": 45,
       "available": 60,
-      "remaining": 15
+      "remaining": 15,
+      "printingTime": 40,
+      "maintenanceCount": 5,
+      "maintenanceTime": 5,
+      "effectivePrintingTime": 53,
+      "utilizationPercent": 75
     }
   ]
 }
@@ -698,10 +729,16 @@ Fields:
 
 | Field | Type | Description |
 |---|---|---|
+| `machineId` | integer | Machine identifier |
 | `machineName` | string | Machine name |
-| `used` | number | Used machine time |
+| `used` | number | Printing time plus maintenance time |
 | `available` | number | Total available machine time |
 | `remaining` | number | Remaining machine time |
+| `printingTime` | number | Time spent printing |
+| `maintenanceCount` | integer | Number of maintenance breaks |
+| `maintenanceTime` | number | Total maintenance time |
+| `effectivePrintingTime` | number | Maximum printing time given availability and breaks |
+| `utilizationPercent` | number | Percentage of total available time used. Zero when availability is zero. |
 
 ---
 
@@ -734,15 +771,29 @@ Examples:
 - no orders exist;
 - no machines exist;
 - required processing times are missing;
+- a machine has an unconfigured continuous printing limit;
 - database data is invalid.
+
+Each ordered book requires an explicit processing time for every machine. A stored zero means that the machine is unnecessary for that book.
 
 ### Response — `400 Bad Request`
 
 ```json
 {
-  "message": "Required optimization data is missing."
+  "status": "invalid_input",
+  "message": "At least one order is required."
 }
 ```
+
+Solver responses use the same `status` and `message` fields.
+
+| Status | HTTP response | Meaning |
+|---|---|---|
+| `unbounded` | 422 | A profitable order uses no machine time. |
+| `solver_error` | 503 | CBC is unavailable, failed, or returned an invalid result. |
+| `not_solved` | 503 | CBC could not prove an optimal plan. |
+
+See the [optimization model](OptimizationModel.md) for the calculation and tests.
 
 ---
 
@@ -754,27 +805,8 @@ Examples:
 | `201 Created` | New resource created successfully |
 | `400 Bad Request` | Invalid request or data |
 | `404 Not Found` | Requested resource does not exist |
+| `422 Unprocessable Content` | The optimization objective is unbounded |
 | `503 Service Unavailable` | Database/backend configuration problem |
-
----
-
-# Current missing backend functionality
-
-The following functionality is already expected by the frontend but is not yet implemented in the backend:
-
-## Optimization
-
-```text
-POST /api/optimize
-```
-
-This endpoint still needs:
-
-1. database data loading;
-2. database-to-optimizer conversion;
-3. PuLP/CBC execution;
-4. optimizer result conversion;
-5. optimal/infeasible result handling.
 
 ---
 
