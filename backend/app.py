@@ -1,9 +1,12 @@
 import math
+from decimal import Decimal, ROUND_HALF_UP
 
 import psycopg
 from flask import Flask, jsonify, request, send_from_directory
 
 from db import DatabaseConfigurationError, get_connection
+from optimizer import optimize
+from optimization_service import load_optimizer_input, format_optimization_result
 
 app = Flask(
     __name__,
@@ -223,125 +226,146 @@ def add_order():
     }), 201
 
 
+MINUTES_PER_HOUR = 60
+
+
+def hours_to_minutes(hours: float) -> Decimal:
+    """Convert API hours to the database unit."""
+    return Decimal(str(hours)) * MINUTES_PER_HOUR
+
+
+def minutes_to_hours(minutes: Decimal | float) -> float:
+    """Convert database or optimizer minutes to API hours."""
+    return float(minutes / MINUTES_PER_HOUR)
+
+
+def machine_times(data: dict) -> tuple[Decimal, Decimal | None, Decimal | None]:
+    """Read availability and any provided maintenance settings in API hours."""
+    times = []
+    for field, label, optional, zero_allowed, limit in (
+        ("availableTime", "Available time", False, False, 10**12),
+        ("continuousPrintingTime", "Continuous printing time", True, False, 10**10),
+        ("maintenanceTime", "Maintenance time", True, True, 10**10),
+    ):
+        if optional and field not in data:
+            times.append(None)
+            continue
+        raw = data.get(field)
+        try:
+            value = float(raw)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(f"{label} must be a finite number.") from None
+        if isinstance(raw, bool) or not math.isfinite(value):
+            raise ValueError(f"{label} must be a finite number.")
+        if value < 0 or (value == 0 and not zero_allowed):
+            minimum = "0 or greater" if zero_allowed else "greater than 0"
+            raise ValueError(f"{label} must be {minimum}.")
+        minutes = hours_to_minutes(value)
+        if minutes >= limit - Decimal("0.005"):
+            raise ValueError(f"{label} is too large to store.")
+        minutes = minutes.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if minutes == 0 and not zero_allowed:
+            raise ValueError(f"{label} is too small to store.")
+        times.append(minutes)
+    return tuple(times)
+
+
+def machine_response(
+    machine_id: int, name: str, available: Decimal, continuous: Decimal, maintenance: Decimal
+) -> dict:
+    """Serialize stored machine times in API hours."""
+    return {
+        "id": machine_id,
+        "name": name,
+        "availableTime": minutes_to_hours(available),
+        "continuousPrintingTime": minutes_to_hours(continuous),
+        "maintenanceTime": minutes_to_hours(maintenance),
+    }
+
+
 @app.get("/api/machines")
 def get_machines():
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                SELECT id, name, available_time
+                SELECT id, name, available_time, continuous_printing_time, maintenance_time
                 FROM machines
                 ORDER BY id
             """)
             rows = cur.fetchall()
 
-    machines = [
-        {
-            "id": row[0],
-            "name": row[1],
-            "availableTime": float(row[2])
-        }
-        for row in rows
-    ]
-
-    return jsonify(machines)
+    return jsonify([machine_response(*row) for row in rows])
 
 
 @app.post("/api/machines")
 def add_machine():
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"message": "Invalid JSON data."}), 400
 
     name = data.get("name")
-    available_time = data.get("availableTime")
-
     if not isinstance(name, str) or len(name.strip()) < 2:
         return jsonify({
             "message": "Machine name must have at least 2 characters."
         }), 400
 
     try:
-        available_time = float(available_time)
-    except (TypeError, ValueError):
-        return jsonify({
-            "message": "Available time must be a number."
-        }), 400
-
-    if available_time <= 0:
-        return jsonify({
-            "message": "Available time must be greater than 0."
-        }), 400
+        available, continuous, maintenance = machine_times(data)
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO machines (name, available_time)
-                VALUES (%s, %s)
-                RETURNING id
+            cur.execute("""
+                INSERT INTO machines
+                    (name, available_time, continuous_printing_time, maintenance_time)
+                VALUES (%s, %s, COALESCE(%s, 0), COALESCE(%s, 0))
+                RETURNING id, name, available_time, continuous_printing_time, maintenance_time
                 """,
-                (name.strip(), available_time)
+                (name.strip(), available, continuous, maintenance)
             )
-            machine_id = cur.fetchone()[0]
+            row = cur.fetchone()
 
-    return jsonify({
-        "id": machine_id,
-        "name": name.strip(),
-        "availableTime": available_time
-    }), 201
+    return jsonify(machine_response(*row)), 201
 
 
 @app.put("/api/machines/<int:machine_id>")
 def update_machine(machine_id):
     data = request.get_json(silent=True)
-
     if not isinstance(data, dict):
         return jsonify({"message": "Invalid JSON data."}), 400
 
     name = data.get("name")
-    available_time = data.get("availableTime")
-
     if not isinstance(name, str) or len(name.strip()) < 2:
         return jsonify({
             "message": "Machine name must have at least 2 characters."
         }), 400
 
     try:
-        available_time = float(available_time)
-    except (TypeError, ValueError):
-        return jsonify({
-            "message": "Available time must be a number."
-        }), 400
-
-    if available_time <= 0:
-        return jsonify({
-            "message": "Available time must be greater than 0."
-        }), 400
+        available, continuous, maintenance = machine_times(data)
+    except ValueError as error:
+        return jsonify({"message": str(error)}), 400
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
+            cur.execute("""
                 UPDATE machines
                 SET name = %s,
-                    available_time = %s
+                    available_time = %s,
+                    continuous_printing_time = COALESCE(%s, continuous_printing_time),
+                    maintenance_time = COALESCE(%s, maintenance_time)
                 WHERE id = %s
-                RETURNING id
+                RETURNING id, name, available_time, continuous_printing_time, maintenance_time
                 """,
-                (name.strip(), available_time, machine_id)
+                (name.strip(), available, continuous, maintenance, machine_id)
             )
-
             updated = cur.fetchone()
 
     if updated is None:
         return jsonify({"message": "Machine not found."}), 404
 
-    return jsonify({
-        "id": machine_id,
-        "name": name.strip(),
-        "availableTime": available_time
-    })
+    return jsonify(machine_response(*updated))
+
 
 def is_integer_id(value):
     # bool is a subclass of int in Python, so True/False must be rejected explicitly.
@@ -363,7 +387,7 @@ def get_processing_times():
         {
             "bookId": row[0],
             "machineId": row[1],
-            "time": float(row[2])
+            "time": minutes_to_hours(row[2])
         }
         for row in rows
     ]
@@ -425,7 +449,7 @@ def upsert_processing_time():
                     DO UPDATE SET processing_time = EXCLUDED.processing_time
                     RETURNING processing_time
                     """,
-                    (book_id, machine_id, time)
+                    (book_id, machine_id, hours_to_minutes(time))
                 )
             except psycopg.errors.NumericValueOutOfRange:
                 conn.rollback()
@@ -439,8 +463,27 @@ def upsert_processing_time():
     return jsonify({
         "bookId": book_id,
         "machineId": machine_id,
-        "time": float(stored_time)
+        "time": minutes_to_hours(stored_time)
     })
+
+
+@app.post("/api/optimize")
+def optimize_plan():
+    """Run the optimizer using a consistent database snapshot."""
+    if request.get_data() and request.get_json(silent=True) != {}:
+        return jsonify({"message": "Expected an empty JSON object."}), 400
+
+    with get_connection() as conn:
+        conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
+        optimizer_data = load_optimizer_input(conn)
+
+    plan = optimize(
+        optimizer_data["orders"],
+        optimizer_data["machines"],
+        optimizer_data["processing_times"],
+    )
+    response, status_code = format_optimization_result(plan, optimizer_data)
+    return jsonify(response), status_code
 
 
 @app.errorhandler(DatabaseConfigurationError)

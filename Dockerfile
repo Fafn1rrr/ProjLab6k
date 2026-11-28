@@ -6,6 +6,8 @@ RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY backend/app.py .
 COPY backend/db.py .
+COPY backend/optimizer.py .
+COPY backend/optimization_service.py .
 COPY frontend ./frontend
 
 CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
