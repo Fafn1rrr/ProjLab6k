@@ -6,6 +6,7 @@ from flask import Flask, jsonify, request, send_from_directory
 
 from db import DatabaseConfigurationError, get_connection
 from optimizer import optimize
+from optimization_service import load_optimizer_input, format_optimization_result
 
 app = Flask(
     __name__,
@@ -468,90 +469,21 @@ def upsert_processing_time():
 
 @app.post("/api/optimize")
 def optimize_plan():
-    """Load a consistent snapshot, run the optimizer and serialize its plan."""
+    """Run the optimizer using a consistent database snapshot."""
     if request.get_data() and request.get_json(silent=True) != {}:
         return jsonify({"message": "Expected an empty JSON object."}), 400
 
     with get_connection() as conn:
         conn.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT o.id, o.book_id, b.profit_per_unit, o.min_quantity, b.title
-                FROM orders AS o
-                JOIN books AS b ON b.id = o.book_id
-                ORDER BY o.id
-            """)
-            order_rows = cur.fetchall()
-            cur.execute("""
-                SELECT id, available_time, continuous_printing_time, maintenance_time, name
-                FROM machines
-                ORDER BY id
-            """)
-            machine_rows = cur.fetchall()
-            cur.execute("""
-                SELECT p.book_id, p.machine_id, p.processing_time
-                FROM processing_times AS p
-                WHERE EXISTS (SELECT 1 FROM orders AS o WHERE o.book_id = p.book_id)
-            """)
-            processing_rows = cur.fetchall()
+        optimizer_data = load_optimizer_input(conn)
 
     plan = optimize(
-        [
-            {"id": order_id, "book_id": book_id, "profit_per_unit": profit, "min_quantity": minimum}
-            for order_id, book_id, profit, minimum, _ in order_rows
-        ],
-        [
-            {
-                "id": machine_id, "available_time": available,
-                "continuous_printing_time": continuous, "maintenance_time": maintenance,
-            }
-            for machine_id, available, continuous, maintenance, _ in machine_rows
-        ],
-        [
-            {"book_id": book_id, "machine_id": machine_id, "time": time}
-            for book_id, machine_id, time in processing_rows
-        ],
+        optimizer_data["orders"],
+        optimizer_data["machines"],
+        optimizer_data["processing_times"],
     )
-    if plan["status"] != "optimal":
-        status_code = {
-            "infeasible": 200,
-            "invalid_input": 400,
-            "unbounded": 422,
-            "solver_error": 503,
-            "not_solved": 503,
-        }[plan["status"]]
-        return jsonify(plan), status_code
-
-    book_names = {row[0]: row[4] for row in order_rows}
-    machine_names = {row[0]: row[4] for row in machine_rows}
-    return jsonify({
-        "status": plan["status"],
-        "totalProfit": plan["total_profit"],
-        "items": [
-            {
-                "orderId": item["order_id"],
-                "bookName": book_names[item["order_id"]],
-                "quantity": item["quantity"],
-                "profit": item["profit"],
-            }
-            for item in plan["items"]
-        ],
-        "machines": [
-            {
-                "machineId": machine["machine_id"],
-                "machineName": machine_names[machine["machine_id"]],
-                "used": minutes_to_hours(machine["used_time"]),
-                "available": minutes_to_hours(machine["available_time"]),
-                "remaining": minutes_to_hours(machine["remaining_time"]),
-                "printingTime": minutes_to_hours(machine["printing_time"]),
-                "maintenanceCount": machine["maintenance_count"],
-                "maintenanceTime": minutes_to_hours(machine["maintenance_time"]),
-                "effectivePrintingTime": minutes_to_hours(machine["effective_printing_time"]),
-                "utilizationPercent": machine["utilization_percent"],
-            }
-            for machine in plan["machines"]
-        ],
-    })
+    response, status_code = format_optimization_result(plan, optimizer_data)
+    return jsonify(response), status_code
 
 
 @app.errorhandler(DatabaseConfigurationError)
