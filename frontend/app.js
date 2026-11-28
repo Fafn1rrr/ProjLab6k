@@ -3,7 +3,7 @@ const API = '/api';
 const data = { books: [], orders: [], machines: [], times: [] };
 const $ = id => document.getElementById(id);
 const euro = n => Number(n).toFixed(2) + ' €';
-const hours = n => Number(n).toFixed(2) + ' h';
+const minutes = n => Math.round(Number(n) * 100) / 100 + ' min';
 const bookName = id => (data.books.find(b => b.id === id) || { name: '?' }).name;
 
 function safe(text) {
@@ -51,7 +51,7 @@ async function loadAll() {
 const columns = {
   books:    b => [safe(b.name), euro(b.profitPerUnit)],
   orders:   o => [safe(bookName(o.bookId)), o.minQuantity],
-  machines: m => [safe(m.name), m.availableTime]
+  machines: m => [safe(m.name), m.availableTime, m.continuousPrintingTime ?? '-', m.maintenanceTime ?? '-']
 };
 
 function showTable(list) {
@@ -63,7 +63,8 @@ function showTable(list) {
     }
     html += '</tr>';
   }
-  $(list + '-rows').innerHTML = html || '<tr><td colspan="3" class="empty">Nothing here yet.</td></tr>';
+  const cols = $(list + '-rows').parentElement.tHead.rows[0].cells.length;
+  $(list + '-rows').innerHTML = html || `<tr><td colspan="${cols}" class="empty">Nothing here yet.</td></tr>`;
 }
 
 for (const form of document.querySelectorAll('form[data-list]')) {
@@ -96,7 +97,7 @@ for (const form of document.querySelectorAll('form[data-list]')) {
 function editItem(list, id) {
   const form = document.querySelector(`form[data-list="${list}"]`);
   const item = data[list].find(x => x.id === id);
-  for (const key in item) form.elements[key].value = item[key];
+  for (const key in item) if (form.elements[key]) form.elements[key].value = item[key];
   form.querySelector('span').textContent = 'Save Changes';
   form.querySelector('.cancel').hidden = false;
 }
@@ -167,6 +168,7 @@ function findMissingData() {
 
 function showPlanError(text) {
   $('result').hidden = true;
+  $('count-profit').textContent = euro(0);
   $('planInfo').textContent = text;
   showMessage(text, true);
 }
@@ -175,6 +177,11 @@ async function runOptimize() {
   $('planInfo').textContent = '';
   const missing = findMissingData();
   if (missing) return showPlanError(missing);
+
+  const button = $('optimizeButton');
+  const buttonHtml = button.innerHTML;
+  button.disabled = true;
+  button.textContent = 'Calculating...';
 
   try {
     const plan = await request('POST', '/optimize', {});
@@ -185,9 +192,18 @@ async function runOptimize() {
     showPlan(plan);
   } catch (error) {
     showPlanError(error.message);
+  } finally {
+    button.disabled = false;
+    button.innerHTML = buttonHtml;
   }
 }
 
+// Gaidāmā /api/optimize atbilde (jāsaskan ar API_CONTRACT.md), viss minūtēs:
+// { status: 'optimal', totalProfit: 3700,
+//   items:    [{ orderId: 1, bookName: 'Dune', quantity: 500, profit: 2500 }],
+//   machines: [{ machineName: 'Printer A', available: 2400, printingTime: 1900,
+//                maintenanceTime: 200, remaining: 300 }] }
+// status: 'infeasible' + message  vai kļūda 400 { message: '...' }
 function showPlan(plan) {
   $('result').hidden = false;
   $('totalProfit').textContent = euro(plan.totalProfit);$('count-profit').textContent = euro(plan.totalProfit);
@@ -206,10 +222,12 @@ function showPlan(plan) {
   }
   $('planRows').innerHTML = html + `<tr class="total"><td>Total</td><td>${total}</td><td>${euro(plan.totalProfit)}</td><td></td></tr>`;
 
-  $('loadList').innerHTML = plan.machines.map(m => `
-    <li><span>${safe(m.machineName)}</span><span>${Math.round(m.used / m.available * 100)}%</span>
-    <progress value="${m.used}" max="${m.available}"></progress>
-    <small>Used: ${hours(m.used)} · Remaining: ${hours(m.remaining)}</small></li>`).join('');
+  $('loadList').innerHTML = plan.machines.map(m => {
+    const busy = m.printingTime + m.maintenanceTime;
+    return `<li><span>${safe(m.machineName)}</span><span>${Math.round(busy / m.available * 100)}%</span>
+    <progress value="${busy}" max="${m.available}"></progress>
+    <small>Printing: ${minutes(m.printingTime)} · Maintenance: ${minutes(m.maintenanceTime)} · Remaining: ${minutes(m.remaining)}</small></li>`;
+  }).join('');
 }
 
 loadAll();
